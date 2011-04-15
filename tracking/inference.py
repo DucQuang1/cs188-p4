@@ -217,10 +217,11 @@ class ParticleFilter(InferenceModule):
   
     def initializeUniformly(self, gameState):
         "Initializes a list of particles. Use self.numParticles for the number of particles"
-        self.particles = util.Counter()
         legal = self.legalPositions
+        self.particles = util.Counter()
         for i in range(self.numParticles):
-            self.particles[random.choice(legal)] += 1
+	        randomPos = random.choice(legal)
+            self.particles[randomPos] = self.particles[randomPos] + 1
         self.particles.normalize()
         self.beliefs = util.Counter()
         for p in self.legalPositions: 
@@ -253,46 +254,27 @@ class ParticleFilter(InferenceModule):
         emissionModel = busters.getObservationDistribution(noisyDistance)
         pacmanPosition = gameState.getPacmanPosition()
         "*** YOUR CODE HERE ***"
-        if self.particles.totalCount() == 0:
-            self.initializeUniformly(self.numParticles)
-        #value=0
-        weights=util.Counter()
-
+        
+        value = 0
         allPossible = util.Counter()
         for p in self.legalPositions:
             trueDistance = util.manhattanDistance(p, pacmanPosition)
-            if emissionModel[trueDistance] > 0: 
-                #value=1
-                weights[p]=emissionModel[trueDistance]
-                allPossible[p] = self.particles[p]*weights[p]
+            if emissionModel[trueDistance] > 0:
+	            value = 1
+                allPossible[p] = self.particles[p]*emissionModel[trueDistance]
         allPossible.normalize()
 
-        #scratch out
-        self.weightedParticles=util.Counter()
-        for p in self.particles:
-            self.weightedParticles[p]=self.particles[p]*weights[p]
-        self.weightedParticles.normalize()
-        # don't need above
+        # all weights for particles == 0
+        if value == 0:
+	        self.initializeUniformly(self.numParticles)
 
-        allPossible.normalize()
-        #self.beliefs=allPossible
         #Resample:
+        #Use the probability distribution from allPossible {Pos: probability, Pos: probability, ...}
         self.particles = util.Counter()
         for i in range(self.numParticles):
-            self.particles[util.sampleFromCounter(allPossible)] += 1
+	        samplePos = util.sampleFromCounter(allPossible)
+            self.particles[samplePos] = self.particles[samplePos] + 1
         self.particles.normalize()
-        
-        """
-        newParticles=util.Counter()
-        for i in range(self.numParticles):
-            p = util.sample(self.weightedParticles)
-            self.particles[p]=self.particles[p]-1
-            self.weightedParticles[p]=weights[p]* self.particles[p]-1
-            newParticles[p]=newParticles[p]+1
-        """
-        #If all zero
-        #if value ==0:
-        #    self.initializeUniformly(gameState)
         
         #If ghost in jail
         if noisyDistance == None:
@@ -301,9 +283,6 @@ class ParticleFilter(InferenceModule):
                     allPossible[p] = 1.0
                 else:
                     allPossible[p] = 0.0
-                    
-        #
-        
         
     
     def elapseTime(self, gameState):
@@ -323,10 +302,10 @@ class ParticleFilter(InferenceModule):
         for p in self.legalPositions:
             newPosDist = self.getPositionDistribution(self.setGhostPosition(gameState, p))
             for newPos,newProb in newPosDist.items():
-            # newParticles[util.sample(newPosDist)]=newParticles[util.sample(newPosDist)]+1
+                #newParticles[util.sample(newPosDist)]=newParticles[util.sample(newPosDist)]+1
                 newParticles[newPos] = newParticles[newPos] + newProb* self.particles[p]
         newParticles.normalize()
-        self.particles=newParticles
+        self.particles = newParticles
 
     def getBeliefDistribution(self):
         """
