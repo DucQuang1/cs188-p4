@@ -217,7 +217,7 @@ class ParticleFilter(InferenceModule):
   
     def initializeUniformly(self, gameState):
         "Initializes a list of particles. Use self.numParticles for the number of particles"
-        self.particles = Counter()
+        self.particles = util.Counter()
         legal = self.legalPositions
         for i in range(self.numParticles):
             self.particles[random.choice(legal)] = self.particles[random.choice(legal)]+1
@@ -253,20 +253,26 @@ class ParticleFilter(InferenceModule):
         pacmanPosition = gameState.getPacmanPosition()
         "*** YOUR CODE HERE ***"
         value=0
+        weights=util.Counter()
         allPossible = util.Counter()
         for p in self.legalPositions:
             trueDistance = util.manhattanDistance(p, pacmanPosition)
             if emissionModel[trueDistance] > 0: 
                 value=1
-                self.particles[p]=self.particles[p]*emissionModel[trueDistance]
-                allPossible[p] = self.particles[p] * self.beliefs[p]
+                weights[p]=emissionModel[trueDistance]
+                allPossible[p] = self.particles[p]*weights[p] * self.beliefs[p]
         
-        
+        self.weightedParticles=util.Counter()
+        for p in self.particles:
+            self.weightedParticles[p]=self.particles[p]*weights[p]
+
+        self.weightedParticles.normalize()
         #Resample:
         newParticles=util.Counter()
         for i in range(self.numParticles):
-            p = util.sample(self.particles)
-            self.particles[p]=0
+            p = util.sample(self.weightedParticles)
+            self.particles[p]=self.particles[p]-1
+            self.weightedParticles[p]=self.weights[p]* self.particles[p]-1
             newParticles[p]=newParticles[p]+1
         
         #If all zero
@@ -298,7 +304,12 @@ class ParticleFilter(InferenceModule):
     position.
     """
         "*** YOUR CODE HERE ***"
-        util.raiseNotDefined()
+        newParticles = util.Counter()
+        for p in self.particles:
+            newPosDist = self.getPositionDistribution(self.setGhostPosition(gameState, p))
+            newParticles[util.sample(newPosDist)]=newParticles[util.sample(newPosDist)]+1
+            
+        self.particles=newParticles
 
     def getBeliefDistribution(self):
         """
@@ -306,7 +317,7 @@ class ParticleFilter(InferenceModule):
     ghost locations conditioned on all evidence and time passage.
     """
         "*** YOUR CODE HERE ***"
-        util.raiseNotDefined()
+        return self.beliefs
 
 class MarginalInference(InferenceModule):
     "A wrapper around the JointInference module that returns marginal beliefs about ghosts."
