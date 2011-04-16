@@ -261,12 +261,12 @@ class ParticleFilter(InferenceModule):
             trueDistance = util.manhattanDistance(p, pacmanPosition)
             if emissionModel[trueDistance] > 0:
                 value = 1
-                allPossible[p] = self.particles[p]*emissionModel[trueDistance]
+                allPossible[p] = self.particles[p] * emissionModel[trueDistance]
         allPossible.normalize()
 
         # all weights for particles == 0
         if value == 0:
-	        self.initializeUniformly(self.numParticles)
+            self.initializeUniformly(self.numParticles)
 
         #Resample:
         #Use the probability distribution from allPossible {Pos: probability, Pos: probability, ...}
@@ -301,9 +301,9 @@ class ParticleFilter(InferenceModule):
         newParticles = util.Counter()
         for p in self.legalPositions:
             newPosDist = self.getPositionDistribution(self.setGhostPosition(gameState, p))
-            for newPos,newProb in newPosDist.items():
+            for newPos, newProb in newPosDist.items():
                 #newParticles[util.sample(newPosDist)]=newParticles[util.sample(newPosDist)]+1
-                newParticles[newPos] = newParticles[newPos] + newProb* self.particles[p]
+                newParticles[newPos] = newParticles[newPos] + newProb * self.particles[p]
         newParticles.normalize()
         self.particles = newParticles
 
@@ -361,6 +361,11 @@ class JointParticleFilter:
         "*** YOUR CODE HERE ***"
         #util.raiseNotDefined()
         self.particles = []
+        #for g in range(self.numGhosts):
+        #    for i in range(self.numParticles):
+        #        randomPos = random.choice(self.legalPositions)
+        #        self.particles[g][randomPos] = self.particles[g][randomPos] + 1
+        
         for i in range(self.numParticles):
             ghostPositions = []
             for j in range(self.numGhosts):
@@ -459,6 +464,40 @@ class JointParticleFilter:
         emissionModels = [busters.getObservationDistribution(dist) for dist in noisyDistances]
 
         "*** YOUR CODE HERE ***"
+        
+        allPossible = util.Counter()
+        value = 0
+        for p in self.particles:
+            for g in range(self.numGhosts):
+                pos = self.particles[p][g]
+                trueDistance = util.manhattanDistance(pos, pacmanPosition)
+                if emissionModel[trueDistance] > 0:
+                    value = 1
+                    allPossible[p][g] = self.particles[p][g] * emissionModel[trueDistance]
+                #allPossible[p].normalize()
+
+        # all weights for particles == 0
+        if value == 0:
+            self.initializeParticles()
+
+        #Resample:
+        #Use the probability distribution from allPossible {Pos: probability, Pos: probability, ...}
+        self.particles = util.Counter()
+        for i in range(self.numParticles):
+            samplePos = util.sampleFromCounter(allPossible)
+            self.particles[samplePos] = self.particles[samplePos] + 1
+        self.particles.normalize()
+        
+        #If ghost in jail
+        for g in range(self.numGhosts):
+            if noisyDistances[g] == None:
+                for p in self.beliefs:
+                    if p == self.getJailPosition(g):
+                        allPossible[p][g] = 1.0
+                    else:
+                        allPossible[p][g] = 0.0
+
+        
   
     def getBeliefDistribution(self):
         dist = util.Counter()
