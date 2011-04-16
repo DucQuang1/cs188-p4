@@ -220,7 +220,7 @@ class ParticleFilter(InferenceModule):
         legal = self.legalPositions
         self.particles = util.Counter()
         for i in range(self.numParticles):
-	        randomPos = random.choice(legal)
+            randomPos = random.choice(legal)
             self.particles[randomPos] = self.particles[randomPos] + 1
         self.particles.normalize()
         self.beliefs = util.Counter()
@@ -260,7 +260,7 @@ class ParticleFilter(InferenceModule):
         for p in self.legalPositions:
             trueDistance = util.manhattanDistance(p, pacmanPosition)
             if emissionModel[trueDistance] > 0:
-	            value = 1
+                value = 1
                 allPossible[p] = self.particles[p]*emissionModel[trueDistance]
         allPossible.normalize()
 
@@ -272,7 +272,7 @@ class ParticleFilter(InferenceModule):
         #Use the probability distribution from allPossible {Pos: probability, Pos: probability, ...}
         self.particles = util.Counter()
         for i in range(self.numParticles):
-	        samplePos = util.sampleFromCounter(allPossible)
+            samplePos = util.sampleFromCounter(allPossible)
             self.particles[samplePos] = self.particles[samplePos] + 1
         self.particles.normalize()
         
