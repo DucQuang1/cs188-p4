@@ -268,14 +268,6 @@ class ParticleFilter(InferenceModule):
         if value == 0:
             self.initializeUniformly(self.numParticles)
 
-        #Resample:
-        #Use the probability distribution from allPossible {Pos: probability, Pos: probability, ...}
-        self.particles = util.Counter()
-        for i in range(self.numParticles):
-            samplePos = util.sampleFromCounter(allPossible)
-            self.particles[samplePos] = self.particles[samplePos] + 1
-        self.particles.normalize()
-        
         #If ghost in jail
         if noisyDistance == None:
             for p in self.beliefs:
@@ -283,7 +275,14 @@ class ParticleFilter(InferenceModule):
                     allPossible[p] = 1.0
                 else:
                     allPossible[p] = 0.0
-        
+        #Resample:
+        #Use the probability distribution from allPossible {Pos: probability, Pos: probability, ...}
+        self.particles = util.Counter()
+        for i in range(self.numParticles):
+            samplePos = util.sampleFromCounter(allPossible)
+            self.particles[samplePos] = self.particles[samplePos] + 1
+        self.particles.normalize()
+
     
     def elapseTime(self, gameState):
         """
@@ -467,26 +466,44 @@ class JointParticleFilter:
         
         allPossible = util.Counter()
         value = 0
-        for p in self.particles:
+        for p in range(self.numParticles):
+            accumulatedWeight = 1.0
             for g in range(self.numGhosts):
-                pos = self.particles[p][g]
-                trueDistance = util.manhattanDistance(pos, pacmanPosition)
-                if emissionModel[trueDistance] > 0:
+                if noisyDistances[g]==None:
+                    continue
+                elif noisyDistances[g]!=None:
+                    pos = self.particles[p][g]
+                    trueDistance = util.manhattanDistance(pos, pacmanPosition)
+                #if emissionModels[g][trueDistance] > 0:
                     value = 1
-                    allPossible[p][g] = self.particles[p][g] * emissionModel[trueDistance]
+                    accumulatedWeight = accumulatedWeight * emissionModels[g][trueDistance]
                 #allPossible[p].normalize()
-
+            allPossible[self.particles[p]] = allPossible[self.particles[p]] + accumulatedWeight
+        allPossible.normalize()
+        self.particles = []
+        newParticles = []
         # all weights for particles == 0
         if value == 0:
             self.initializeParticles()
-
+        else:
+            for i in range(self.numParticles):
+                samplePos = util.sampleFromCounter(allPossible)
+                #self.particles[samplePos] = self.particles[samplePos] + 1
+                self.particles.append(samplePos)
         #Resample:
         #Use the probability distribution from allPossible {Pos: probability, Pos: probability, ...}
-        self.particles = util.Counter()
-        for i in range(self.numParticles):
-            samplePos = util.sampleFromCounter(allPossible)
-            self.particles[samplePos] = self.particles[samplePos] + 1
-        self.particles.normalize()
+        #self.particles = util.Counter()
+        
+        
+        for p in self.particles:
+            p = list(p)
+            for g in range(self.numGhosts):
+                if noisyDistances[g] == None:
+                    p[g] = self.getJailPosition(g)
+            newParticles.append(tuple(p))
+        self.particles = newParticles
+        """
+        #self.particles.normalize()
         
         #If ghost in jail
         for g in range(self.numGhosts):
@@ -497,7 +514,7 @@ class JointParticleFilter:
                     else:
                         allPossible[p][g] = 0.0
 
-        
+        """
   
     def getBeliefDistribution(self):
         dist = util.Counter()
